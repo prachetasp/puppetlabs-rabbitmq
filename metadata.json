@@ -1,7 +1,7 @@
 {
-  "name": "puppetlabs-rabbitmq",
+  "name": "prachetasp-rabbitmq",
   "version": "0.0.1",
-  "author": "prachetasp (originally puppetlabs)",
+  "author": "prachetasp",
   "license": "Licensed under (Apache 2.0)",
   "summary": "RabbitMQ Puppet Module (for company internal usage)",
   "source": "git://github.com/prachetasp/puppetlabs-rabbitmq.git",
