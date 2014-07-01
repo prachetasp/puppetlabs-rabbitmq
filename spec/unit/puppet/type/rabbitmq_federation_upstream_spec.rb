@@ -21,8 +21,8 @@ describe Puppet::Type.type(:rabbitmq_federation_upstream) do
     @federation_upstream[:vhost].should == 'myvhost'
   end
   it 'should accept a uri' do
-    @federation_upstream[:uri] = 'amqp://foouser:foo@localhost/'
-    @federation_upstream[:uri].should == 'amqp://foouser:foo@localhost/'
+    @federation_upstream[:uris] = ['amqp://foouser:foo@localhost/', 'amqp://foouser:foo@localhost/']
+    @federation_upstream[:uris].should == ['amqp://foouser:foo@localhost/', 'amqp://foouser:foo@localhost/']
   end
   it 'should accept expires' do
     @federation_upstream[:expires] = 100
@@ -73,13 +73,13 @@ describe Puppet::Type.type(:rabbitmq_federation_upstream) do
   end
   it 'should not allow whitespace in the uri' do
     expect {
-      @federation_upstream[:uri] = 'amqp:// localhost/'
-    }.to raise_error(Puppet::Error, /Valid values match/)
+      @federation_upstream[:uris] = ['amqp:// localhost/']
+    }.to raise_error(Puppet::Error, /Invalid uri/)
   end
   it 'should not allow a non-amqp uri' do
     expect {
-      @federation_upstream[:uri] = 'foo://localhost/'
-    }.to raise_error(Puppet::Error, /Valid values match/)
+      @federation_upstream[:uris] = 'foo://localhost/'
+    }.to raise_error(Puppet::Error, /Invalid uri/)
   end
   it 'should not allow a non-digit values for expires' do
     expect {

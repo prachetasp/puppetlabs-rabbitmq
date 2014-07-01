@@ -325,11 +325,11 @@ rabbitmq_plugin {'rabbitmq_stomp':
 
 ### rabbitmq\_federation\_upstream
 
-`uri` and `vhost` are required. Other parameters default to the values shown in the example if not provided.
+`uris` and `vhost` are required. `uris` must be a non-empty array of uri's that use the amqp or amqps protocol and contain no spaces. Other parameters default to the values shown in the example if not provided.
 
 ```puppet
 rabbitmq_federation_upstream { 'myupstream':
-  uri             => 'amqp://dan:bar@localhost/myhost',
+  uris            => ['amqp://dan:bar@localhost/myhost', 'amqps://dan:bar@localhost/myhost'],
   vhost           => 'myhost',
   ack_mode        => 'on-confirm',
   expires         => 1000,  # defaults to forever if not provided
@@ -349,7 +349,7 @@ NOTE: It is an error to provide `'all'` in the `upstreams` array.
 
 ```puppet
 rabbitmq_federation_upstreamset { 'myupstreamset':
-  vhost => 'myhost',
+  vhost     => 'myhost',
   upstreams => ['myupstream', 'myupstream1'],
 }
 ```
