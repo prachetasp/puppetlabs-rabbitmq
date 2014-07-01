@@ -29,6 +29,7 @@ class rabbitmq(
   $service_manage             = $rabbitmq::params::service_manage,
   $service_name               = $rabbitmq::params::service_name,
   $ssl                        = $rabbitmq::params::ssl,
+  $ssl_only                   = $rabbitmq::params::ssl_only,
   $ssl_cacert                 = $rabbitmq::params::ssl_cacert,
   $ssl_cert                   = $rabbitmq::params::ssl_cert,
   $ssl_key                    = $rabbitmq::params::ssl_key,
@@ -36,6 +37,7 @@ class rabbitmq(
   $ssl_stomp_port             = $rabbitmq::params::ssl_stomp_port,
   $ssl_verify                 = $rabbitmq::params::ssl_verify,
   $ssl_fail_if_no_peer_cert   = $rabbitmq::params::ssl_fail_if_no_peer_cert,
+  $stomp_ensure               = $rabbitmq::params::stomp_ensure,
   $ldap_auth                  = $rabbitmq::params::ldap_auth,
   $ldap_server                = $rabbitmq::params::ldap_server,
   $ldap_user_dn_pattern       = $rabbitmq::params::ldap_user_dn_pattern,
@@ -58,7 +60,6 @@ class rabbitmq(
   validate_string($package_gpg_key)
   validate_string($package_name)
   validate_string($package_provider)
-  validate_string($package_source)
   validate_bool($manage_repos)
   validate_re($version, '^\d+\.\d+\.\d+(-\d+)*$') # Allow 3 digits and optional -n postfix.
   # Validate config parameters.
@@ -86,6 +87,7 @@ class rabbitmq(
   validate_bool($service_manage)
   validate_string($service_name)
   validate_bool($ssl)
+  validate_bool($ssl_only)
   validate_string($ssl_cacert)
   validate_string($ssl_cert)
   validate_string($ssl_key)
@@ -93,6 +95,7 @@ class rabbitmq(
   validate_re($ssl_management_port, '\d+')
   validate_string($ssl_stomp_port)
   validate_re($ssl_stomp_port, '\d+')
+  validate_bool($stomp_ensure)
   validate_bool($ldap_auth)
   validate_string($ldap_server)
   validate_string($ldap_user_dn_pattern)
@@ -102,6 +105,10 @@ class rabbitmq(
   validate_hash($environment_variables)
   validate_hash($config_variables)
   validate_hash($config_kernel_variables)
+
+  if $ssl_only and ! $ssl {
+    fail('$ssl_only => true requires that $ssl => true')
+  }
 
   include '::rabbitmq::install'
   include '::rabbitmq::config'
@@ -131,6 +138,15 @@ class rabbitmq(
 
     Class['::rabbitmq::service'] -> Class['::rabbitmq::install::rabbitmqadmin']
     Class['::rabbitmq::install::rabbitmqadmin'] -> Rabbitmq_exchange<| |>
+  }
+
+  if $stomp_ensure {
+    rabbitmq_plugin { 'rabbitmq_stomp':
+      ensure  => $stomp_ensure,
+      require => Class['rabbitmq::install'],
+      notify  => Class['rabbitmq::service'],
+      provider => 'rabbitmqplugins'
+    }
   }
 
   if ($ldap_auth) {
