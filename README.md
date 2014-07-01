@@ -234,9 +234,22 @@ Determines if the service is managed.
 
 The name of the service to manage.
 
+####`ssl`
+
+Configures the service for using SSL.
+
+####`ssl_only`
+
+Configures the service to only use SSL.  No cleartext TCP listeners will be created.
+Requires that ssl => true also.
+
 ####`stomp_port`
 
 The port to use for Stomp.
+
+####`stomp_ensure`
+
+Boolean to install the stomp plugin.
 
 ####`wipe_db_on_cookie_change`
 
@@ -258,6 +271,16 @@ rabbitmq_user { 'dan':
   password => 'bar',
 }
 ```
+Optional parameter tags will set further rabbitmq tags like monitoring, policymaker, etc.
+To set the administrator tag use admin-flag.
+```puppet
+rabbitmq_user { 'dan':
+  admin    => true,
+  password => 'bar',
+  tags     => ['monitoring', 'tag1'],
+}
+```
+
 
 ### rabbitmq\_vhost
 
@@ -300,6 +323,71 @@ rabbitmq_plugin {'rabbitmq_stomp':
 }
 ```
 
+### rabbitmq\_federation\_upstream
+
+`uri` and `vhost` are required. Other parameters default to the values shown in the example if not provided.
+
+```puppet
+rabbitmq_federation_upstream { 'myupstream':
+  uri             => 'amqp://dan:bar@localhost/myhost',
+  vhost           => 'myhost',
+  ack_mode        => 'on-confirm',
+  expires         => 1000,  # defaults to forever if not provided
+  max_hops        => 1,
+  message_ttl     => 1000,  # defaults to forever if not provided
+  prefetch_count  => 1000,
+  reconnect_delay => 1,
+  trust_user_id   => false,
+}
+```
+
+###rabbitmq\_federation\_upstreamset 
+
+`vhost` is required. Do not provide `upstreams` to set to `'all'`.
+
+NOTE: It is an error to provide `'all'` in the `upstreams` array.
+
+```puppet
+rabbitmq_federation_upstreamset { 'myupstreamset':
+  vhost => 'myhost',
+  upstreams => ['myupstream', 'myupstream1'],
+}
+```
+
+###rabbitmq\_policy 
+
+`vhost`, `definition` and `pattern` are required. `definition` must be a non-empty Hash. Other parameters default to the values shown in the example if not provided.
+
+```puppet
+rabbitmq_policy { 'mypolicy':
+  vhost      => 'myhost',
+  definition => {'federation-upstream' => 'myfederationupstream'},
+  pattern    => '^.*$',
+  apply_to   => 'all',
+  priority   => 0,
+}
+```
+
+###rabbitmq\_parameter 
+
+The resource title is parsed as '`vhost` `component` `name`'. All three are required. `value` is also required and must be a non-empty Hash.
+
+NOTE: Federation components (federation upstreams and federation upstream sets) cannot be managed with this type. Instead use the rabbitmq_federation_upstream and rabbitmq_federation_upstreamset types.
+
+```puppet
+rabbitmq_parameter { 'myvhost shovel myparameter':
+   value => {'src-uri'             => 'amqp://dan:bar@localhost/',
+             'src-exchange'        => '/',
+             'src-exchange-key'    => 'mykey',
+             'dest-uri'            => 'amqp://dan:bar@localhost/',
+             'dest-exchange'       => '/',
+             'dest-exchange-key'   => 'mykey1',
+             'add-forward-headers' => false,
+             'ack-mode'            => 'on-confirm',
+             'delete-after'        => 'never'},
+}
+```
+
 ##Limitations
 
 This module has been built on and tested against Puppet 2.7 and higher.
@@ -313,8 +401,8 @@ The module has been tested on:
 
 Testing on other platforms has been light and cannot be guaranteed.
 
-### RedHat module dependencies
-To have a suitable erlang version installed on RedHat systems,
+### Module dependencies
+To have a suitable erlang version installed on RedHat and Debian systems,
 you have to install another puppet module from http://forge.puppetlabs.com/garethr/erlang with:
 
     puppet module install garethr-erlang
@@ -322,8 +410,17 @@ you have to install another puppet module from http://forge.puppetlabs.com/garet
 This module handles the packages for erlang.
 To use the module, add the following snippet to your site.pp or an appropriate profile class:
 
+For RedHat systems:
+
     include 'erlang'
     class { 'erlang': epel_enable => true}
+
+For Debian systems:
+
+    include 'erlang'
+    package { 'erlang-base':
+      ensure => 'latest',
+    }
 
 ##Development
 
@@ -343,3 +440,4 @@ You can read the complete module contribution guide [on the Puppet Labs wiki.](h
 * Dan Bode <dan@puppetlabs.com>
 * RPM/RHEL packages by Vincent Janelle <randomfrequency@gmail.com>
 * Puppetlabs Module Team
+
