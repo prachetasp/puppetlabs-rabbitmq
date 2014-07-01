@@ -1,0 +1,15 @@
+{
+  "name": "puppetlabs-rabbitmq",
+  "version": "0.0.1",
+  "author": "prachetasp (originally puppetlabs)",
+  "license": "Licensed under (Apache 2.0)",
+  "summary": "RabbitMQ Puppet Module (for company internal usage)",
+  "source": "git://github.com/prachetasp/puppetlabs-rabbitmq.git",
+  "project_page": "https://github.com/prachetasp/puppetlabs-rabbitmq/tree/module_release",
+  "dependencies": [ { "name": "puppetlabs/stdlib",
+                      "version_requirement": ">= 2.0.0" },
+                    { "name": "puppetlabs/apt",
+                      "version_requirement": ">= 1.0.0" },
+                    { "name": "nanliu/staging",
+                      "version_requirement": ">= 0.3.1" }]
+}
