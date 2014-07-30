@@ -6,20 +6,12 @@ Puppet::Type.type(:rabbitmq_queue).provide(:rabbitmqadmin) do
   defaultfor :feature => :posix
 
   # these :arguments fields must be integers in command
-  INT_FIELDS=['x-message-ttl', 'x-expires']
+  QUEUE_INT_FIELDS=['x-message-ttl', 'x-expires']
 
   def self.to_bool(val)
     return true if val == true || val == :true || val =~ (/(true|t|yes|y|1)$/i)
     return false if val == false || val == :false || val.empty? || val =~ (/(false|f|no|n|0)$/i)
     raise ArgumentError.new("invalid value for Boolean: \"#{val}\"")
-  end
-
-  def should_vhost
-    if @should_vhost
-      @should_vhost
-    else
-      @should_vhost = resource[:name].split('@')[1]
-    end
   end
 
   def self.all_vhosts
@@ -59,7 +51,7 @@ Puppet::Type.type(:rabbitmq_queue).provide(:rabbitmqadmin) do
   def self.prefetch(resources)
     packages = instances
     resources.keys.each do |name|
-      if provider = packages.find{ |pkg| pkg.name == name }
+      if provider = packages.find{ |pkg| pkg.name == resources[name][:unique_name] }
         resources[name].provider = provider
       end
     end
@@ -69,17 +61,11 @@ Puppet::Type.type(:rabbitmq_queue).provide(:rabbitmqadmin) do
     @property_hash[:ensure] == :present
   end
 
-  def vhost_and_name
-    {:name => resource[:name].split('@')[0],
-     :vhost => should_vhost ? "--vhost=#{should_vhost}" : ''
-    }
-  end
-
   def clean_arguments
     # some fields must be integers etc.
     args = resource[:arguments]
     unless args.empty?
-      INT_FIELDS.each do |field|
+      QUEUE_INT_FIELDS.each do |field|
         if args.has_key?(field)
           args[field] = args[field].to_i
         end
@@ -89,14 +75,12 @@ Puppet::Type.type(:rabbitmq_queue).provide(:rabbitmqadmin) do
   end
 
   def create
-    v_and_n = vhost_and_name
-    rabbitmqadmin('declare', 'queue', v_and_n[:vhost], "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{v_and_n[:name]}", "durable=#{resource[:durable]}", "auto_delete=#{resource[:auto_delete]}", "arguments=#{clean_arguments.to_json}")
+    rabbitmqadmin('declare', 'queue', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:queue_name]}", "durable=#{resource[:durable]}", "auto_delete=#{resource[:auto_delete]}", "arguments=#{clean_arguments.to_json}")
     @property_hash[:ensure] = :present
   end
 
   def destroy
-    v_and_n = vhost_and_name
-    rabbitmqadmin('delete', 'queue', v_and_n[:vhost], "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{v_and_n[:name]}")
+    rabbitmqadmin('delete', 'queue', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:unique_name]}")
     @property_hash[:ensure] = :absent
   end
 

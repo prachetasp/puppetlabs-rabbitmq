@@ -1,5 +1,5 @@
-Puppet::Type.newtype(:rabbitmq_queue) do
-  desc 'Native type for managing rabbitmq queues'
+Puppet::Type.newtype(:rabbitmq_binding) do
+  desc 'Native type for managing rabbitmq bindings'
 
   ensurable do
     defaultto(:present)
@@ -17,16 +17,41 @@ Puppet::Type.newtype(:rabbitmq_queue) do
   end
 
   newparam(:vhost) do
-    desc 'Vhost of queue. Defaults to /. Set *on creation*'
+    desc 'Vhost of binding. Defaults to /. Set *on creation*'
+    newvalues(/^[\w\/-]+$/)
     defaultto('/')
   end
 
-  newparam(:queue_name) do
-    desc 'Name of queue. Set *on creation*'
+  newparam(:source) do
+    desc 'Name of source of binding, always an exchange. Set *on creation*'
+    newvalues(/^[\w\/-]+$/)
+  end
+
+  newparam(:destination) do
+    desc 'Name of destination of binding, queue or exchange. Set *on creation*'
+    newvalues(/^[\w\/-]+$/)
+  end
+
+  newparam(:destination_type) do
+    desc 'Type of the destination, can be queue or exchange. Set *on creation*'
+    newvalues(/queue|exchange/)
+    defaultto('queue')
+  end
+
+  newparam(:routing_key) do
+    desc 'Routing key of binding. Defaults to empty string'
+    newvalues(/^[\w\/-]+$/)
+    defaultto('')
+    munge do |routing_key|
+      Puppet.debug 'here first'
+      Puppet.debug resource.to_s
+      #Puppet.debug resource.vhost.to_s
+      routing_key = routing_key
+    end
   end
 
   newparam(:unique_name) do
-    desc 'Unique name of queue. It is built on the fly from other fields!'
+    desc 'Unique name of binding. It is built on the fly from other fields!'
     defaultto('DEFAULT_NAME')
 
     validate do |unique_name|
@@ -36,35 +61,12 @@ Puppet::Type.newtype(:rabbitmq_queue) do
     end
 
     munge do |unique_name|
-      unique_name = resource[:queue_name] + '@' + resource[:vhost]
+      unique_name = resource[:vhost] + resource[:source] + resource[:destination] + resource[:destination_type] + resource[:routing_key]
     end
   end
-
-  newparam(:durable) do
-    desc 'Durable queues survive broker restarts. Set *on creation*'
-    newvalues(/true|false/)
-    # Can the following be broken out into a method?
-    munge do |value|
-      # converting to_s incase its a boolean
-      value.to_s.to_sym
-    end
-    defaultto :true
-  end
-
-  newparam(:auto_delete) do
-    desc 'Auto delete queues are deleted when the last consumer disconnects. Set *on creation*'
-    newvalues(/true|false/)
-    # Can the following be broken out into a method?
-    munge do |value|
-      # converting to_s incase its a boolean
-      value.to_s.to_sym
-    end
-    defaultto :false
-  end
-
 
   newparam(:arguments) do
-    desc 'Arguments allow detailed customization of queues. Expects a Hash. Set *on creation*'
+    desc 'Arguments allow detailed customization of bindings. Expects a Hash. Set *on creation*'
     defaultto({})
     validate do |arguments|
       unless arguments.is_a?(Hash)
