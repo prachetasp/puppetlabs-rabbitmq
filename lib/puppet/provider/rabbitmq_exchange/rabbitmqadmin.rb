@@ -14,13 +14,8 @@ Puppet::Type.type(:rabbitmq_exchange).provide(:rabbitmqadmin) do
   end
   defaultfor :feature => :posix
 
-  def should_vhost
-    if @should_vhost
-      @should_vhost
-    else
-      @should_vhost = resource[:name].split('@')[1]
-    end
-  end
+  # these :arguments fields must be integers in command
+  EXCHANGE_INT_FIELDS=['x-max-hops']
 
   def self.all_vhosts
     parse_command(rabbitmqctl('list_vhosts'))
@@ -43,19 +38,15 @@ Puppet::Type.type(:rabbitmq_exchange).provide(:rabbitmqadmin) do
     resources = []
     all_vhosts.each do |vhost|
         all_exchanges(vhost).collect do |line|
-            name, type = line.split()
-            if type.nil?
-                # if name is empty, it will wrongly get the type's value.
-                # This way type will get the correct value
-                type = name
-                name = ''
+            if line[0] != 9
+              name, type = line.split("\t")
+              exchange = {
+                :type   => type,
+                :ensure => :present,
+                :name   => "%s@%s" % [name, vhost],
+              }
+              resources << new(exchange)
             end
-            exchange = {
-              :type   => type,
-              :ensure => :present,
-              :name   => "%s@%s" % [name, vhost],
-            }
-            resources << new(exchange) if exchange[:type]
         end
     end
     resources
@@ -64,27 +55,37 @@ Puppet::Type.type(:rabbitmq_exchange).provide(:rabbitmqadmin) do
   def self.prefetch(resources)
     packages = instances
     resources.keys.each do |name|
-      if provider = packages.find{ |pkg| pkg.name == name }
+      if provider = packages.find{ |pkg| pkg.name == resources[name][:unique_name] }
         resources[name].provider = provider
       end
     end
+    resources
   end
 
   def exists?
     @property_hash[:ensure] == :present
   end
 
+  def self.clean_arguments
+    # some fields must be integers etc.
+    args = resource[:arguments]
+    unless args.empty?
+      EXCHANGE_INT_FIELDS.each do |field|
+        if args.has_key?(field)
+          args[field] = args[field].to_i
+        end
+      end
+    end
+    args
+  end
+
   def create
-    vhost_opt = should_vhost ? "--vhost=#{should_vhost}" : ''
-    name = resource[:name].split('@')[0]
-    rabbitmqadmin('declare', 'exchange', vhost_opt, "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{name}", "type=#{resource[:type]}")
+    rabbitmqadmin('declare', 'exchange', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:exchange_name]}", "type=#{resource[:type]}", "durable=#{resource[:durable]}", "auto_delete=#{resource[:auto_delete]}", "internal=#{resource[:internal]}", "arguments=#{self.clean_arguments.to_json}")
     @property_hash[:ensure] = :present
   end
 
   def destroy
-    vhost_opt = should_vhost ? "--vhost=#{should_vhost}" : ''
-    name = resource[:name].split('@')[0]
-    rabbitmqadmin('delete', 'exchange', vhost_opt, "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{name}")
+    rabbitmqadmin('delete', 'exchange', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:exchange_name]}")
     @property_hash[:ensure] = :absent
   end
 
