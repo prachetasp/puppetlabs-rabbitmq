@@ -53,8 +53,6 @@ Puppet::Type.type(:rabbitmq_binding).provide(:rabbitmqadmin) do
               :destination_type => destination_type,
               :routing_key      => routing_key,
             }
-            Puppet.debug 'HERE'
-            Puppet.debug binding[:name]
             resources << new(binding)
           end
         end
@@ -73,28 +71,6 @@ Puppet::Type.type(:rabbitmq_binding).provide(:rabbitmqadmin) do
 
   def exists?
     @property_hash[:ensure] == :present
-  end
-
-  def clean_arguments
-    # some fields must be integers etc.
-    args = resource[:arguments]
-    unless args.empty?
-      BINDING_INT_FIELDS.each do |field|
-        if field.is_a?(Array)
-          field.each do |nested_field|
-            z = args
-            if nested_field == field.last
-              z[nested_field] = z[nested_field].to_i
-            else
-              z = z[nested_field]
-            end
-          end
-        elsif args.has_key?(field)
-          args[field] = args[field].to_i
-        end
-      end
-    end
-    args
   end
 
   def create
