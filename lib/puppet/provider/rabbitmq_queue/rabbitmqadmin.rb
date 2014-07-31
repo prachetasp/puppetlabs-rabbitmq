@@ -61,7 +61,7 @@ Puppet::Type.type(:rabbitmq_queue).provide(:rabbitmqadmin) do
     @property_hash[:ensure] == :present
   end
 
-  def clean_arguments
+  def self.clean_arguments
     # some fields must be integers etc.
     args = resource[:arguments]
     unless args.empty?
@@ -75,12 +75,12 @@ Puppet::Type.type(:rabbitmq_queue).provide(:rabbitmqadmin) do
   end
 
   def create
-    rabbitmqadmin('declare', 'queue', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:queue_name]}", "durable=#{resource[:durable]}", "auto_delete=#{resource[:auto_delete]}", "arguments=#{clean_arguments.to_json}")
+    rabbitmqadmin('declare', 'queue', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:queue_name]}", "durable=#{resource[:durable]}", "auto_delete=#{resource[:auto_delete]}", "arguments=#{self.clean_arguments.to_json}")
     @property_hash[:ensure] = :present
   end
 
   def destroy
-    rabbitmqadmin('delete', 'queue', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:unique_name]}")
+    rabbitmqadmin('delete', 'queue', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:queue_name]}")
     @property_hash[:ensure] = :absent
   end
 
