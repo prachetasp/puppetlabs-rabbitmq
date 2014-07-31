@@ -18,18 +18,15 @@ Puppet::Type.newtype(:rabbitmq_binding) do
 
   newparam(:vhost) do
     desc 'Vhost of binding. Defaults to /. Set *on creation*'
-    newvalues(/^[\w\/-]+$/)
     defaultto('/')
   end
 
   newparam(:source) do
     desc 'Name of source of binding, always an exchange. Set *on creation*'
-    newvalues(/^[\w\/-]+$/)
   end
 
   newparam(:destination) do
     desc 'Name of destination of binding, queue or exchange. Set *on creation*'
-    newvalues(/^[\w\/-]+$/)
   end
 
   newparam(:destination_type) do
@@ -40,7 +37,7 @@ Puppet::Type.newtype(:rabbitmq_binding) do
 
   newparam(:routing_key) do
     desc 'Routing key of binding. Defaults to empty string'
-    newvalues(/^[\w\/-]+$/)
+    newvalues(/^[\w\/-]*$/)
     defaultto('')
     munge do |routing_key|
       Puppet.debug 'here first'

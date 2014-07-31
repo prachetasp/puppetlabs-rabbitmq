@@ -5,6 +5,8 @@ Puppet::Type.type(:rabbitmq_binding).provide(:rabbitmqadmin) do
   commands :rabbitmqadmin => '/usr/local/bin/rabbitmqadmin'
   defaultfor :feature => :posix
 
+  BINDING_INT_FIELDS = [['x-bound-from', 'hops']]
+
   def self.all_vhosts
     vhosts = []
     parse_command(rabbitmqctl('list_vhosts')).collect do |vhost|
@@ -31,30 +33,30 @@ Puppet::Type.type(:rabbitmq_binding).provide(:rabbitmqadmin) do
     resources = []
     all_vhosts.each do |vhost|
         all_bindings(vhost).collect do |line|
-            binding_params = line.split()
-            # either source_name (default exchange) or routing key can be an empty
-            # string so we must explicitly replace the missing param with empty strings
-            if binding_params.length == 3
-              # this is a tricky case since we don't know which value is the empty string
-              if binding_params.last =~ /queue|exchange/
-                binding_params.push('')
+            # only create binding resource if it is not on the default exchange
+            # checks if first character is a tab which means default exchange binding
+            if line[0] != 9
+              # checks if last character is a tab which means empty routing key
+              if line[-1] == 9
+                source, destination, destination_type = line.split("\t")
+                routing_key = ''
               else
-                binding_params.insert(0, '')
+                source, destination, destination_type, routing_key = line.split("\t")
               end
-            end
-            # we don't care to match up arguments because the resource cannot be changed
             # honestly don't care about anything but name for prefetch
             binding = {
               :ensure           => :present,
-              :name             => "%s%s%s%s%s" % [vhost, *binding_params],
+              :name             => "%s%s%s%s%s" % [vhost, source, destination, destination_type, routing_key],
               :vhost            => vhost,
-              :source           => binding_params[0],
-              :destination      => binding_params[1],
-              :destination_type => binding_params[2],
-              :routing_key      => binding_params[3],
+              :source           => source,
+              :destination      => destination,
+              :destination_type => destination_type,
+              :routing_key      => routing_key,
             }
-            # only create binding resource if it is not on the default exchange
-            resources << new(binding) if binding_params[0] != ''
+            Puppet.debug 'HERE'
+            Puppet.debug binding[:name]
+            resources << new(binding)
+          end
         end
     end
     resources
@@ -73,13 +75,35 @@ Puppet::Type.type(:rabbitmq_binding).provide(:rabbitmqadmin) do
     @property_hash[:ensure] == :present
   end
 
+  def clean_arguments
+    # some fields must be integers etc.
+    args = resource[:arguments]
+    unless args.empty?
+      BINDING_INT_FIELDS.each do |field|
+        if field.is_a?(Array)
+          field.each do |nested_field|
+            z = args
+            if nested_field == field.last
+              z[nested_field] = z[nested_field].to_i
+            else
+              z = z[nested_field]
+            end
+          end
+        elsif args.has_key?(field)
+          args[field] = args[field].to_i
+        end
+      end
+    end
+    args
+  end
+
   def create
-    rabbitmqadmin('declare', 'binding', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "source=#{resource[:source]}", "destination=#{resource[:destination]}", "destination_type=#{resource[:destination_type]}", "routing_key=#{resource[:routing_key]}", "arguments=#{resource[:arguments]}")
+    rabbitmqadmin('declare', 'binding', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "source=#{resource[:source]}", "destination=#{resource[:destination]}", "destination_type=#{resource[:destination_type]}", "routing_key=#{resource[:routing_key]}", "arguments=#{resource[:arguments].to_json}")
     @property_hash[:ensure] = :present
   end
 
   def destroy
-    rabbitmqadmin('delete', 'binding', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "source=#{resource[:source]}", "destination=#{resource[:destination]}", "destination_type=#{resource[:destination_type]}", "properties_key=#{resource[:routing_key]}")
+    rabbitmqadmin('delete', 'binding', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "source=#{resource[:source]}", "destination=#{resource[:destination]}", "destination_type=#{resource[:destination_type]}", "properties_key=#{resource[:routing_key] == '' ? '~' : resource[:routing_key]}")
     @property_hash[:ensure] = :absent
   end
 
