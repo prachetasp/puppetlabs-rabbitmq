@@ -34,25 +34,15 @@ Puppet::Type.type(:rabbitmq_exchange).provide(:rabbitmqadmin) do
     resources = []
     all_vhosts.each do |vhost|
         all_exchanges(vhost).collect do |line|
-            name_and_type = line.split()
-            case name_and_type.length
-            when 1
-              # if name is empty, it will wrongly get the type's value.
-              # This way type will get the correct value
-              type = name
-              name = ''
-            when 2
-              name, type = name_and_type
-            else
-              type = name_and_type.pop()
-              name = name_and_type.join(' ')
+            if line[0] != 9
+              name, type = line.split("\t")
+              exchange = {
+                :type   => type,
+                :ensure => :present,
+                :name   => "%s@%s" % [name, vhost],
+              }
+              resources << new(exchange)
             end
-            exchange = {
-              :type   => type,
-              :ensure => :present,
-              :name   => "%s@%s" % [name, vhost],
-            }
-            resources << new(exchange) if exchange[:type]
         end
     end
     resources
@@ -60,11 +50,7 @@ Puppet::Type.type(:rabbitmq_exchange).provide(:rabbitmqadmin) do
 
   def self.prefetch(resources)
     packages = instances
-    packages.each do |pkge|
-      Puppet.debug pkge.name
-    end
     resources.keys.each do |name|
-      Puppet.debug resources[name][:unique_name]
       if provider = packages.find{ |pkg| pkg.name == resources[name][:unique_name] }
         resources[name].provider = provider
       end
@@ -76,7 +62,7 @@ Puppet::Type.type(:rabbitmq_exchange).provide(:rabbitmqadmin) do
     @property_hash[:ensure] == :present
   end
 
-  def clean_arguments
+  def self.clean_arguments
     # some fields must be integers etc.
     args = resource[:arguments]
     unless args.empty?
@@ -90,12 +76,12 @@ Puppet::Type.type(:rabbitmq_exchange).provide(:rabbitmqadmin) do
   end
 
   def create
-    rabbitmqadmin('declare', 'exchange', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:exchange_name]}", "type=#{resource[:type]}", "durable=#{resource[:durable]}", "auto_delete=#{resource[:auto_delete]}", "internal=#{resource[:internal]}", "arguments=#{clean_arguments.to_json}")
+    rabbitmqadmin('declare', 'exchange', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:exchange_name]}", "type=#{resource[:type]}", "durable=#{resource[:durable]}", "auto_delete=#{resource[:auto_delete]}", "internal=#{resource[:internal]}", "arguments=#{self.clean_arguments.to_json}")
     @property_hash[:ensure] = :present
   end
 
   def destroy
-    rabbitmqadmin('delete', 'exchange', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:name]}")
+    rabbitmqadmin('delete', 'exchange', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:exchange_name]}")
     @property_hash[:ensure] = :absent
   end
 
