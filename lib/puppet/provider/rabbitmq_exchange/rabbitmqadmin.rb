@@ -62,7 +62,7 @@ Puppet::Type.type(:rabbitmq_exchange).provide(:rabbitmqadmin) do
     @property_hash[:ensure] == :present
   end
 
-  def clean_arguments
+  def self.clean_arguments
     # some fields must be integers etc.
     args = resource[:arguments]
     unless args.empty?
@@ -76,7 +76,7 @@ Puppet::Type.type(:rabbitmq_exchange).provide(:rabbitmqadmin) do
   end
 
   def create
-    rabbitmqadmin('declare', 'exchange', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:exchange_name]}", "type=#{resource[:type]}", "durable=#{resource[:durable]}", "auto_delete=#{resource[:auto_delete]}", "internal=#{resource[:internal]}", "arguments=#{clean_arguments.to_json}")
+    rabbitmqadmin('declare', 'exchange', "--vhost=#{resource[:vhost]}", "--user=#{resource[:user]}", "--password=#{resource[:password]}", "name=#{resource[:exchange_name]}", "type=#{resource[:type]}", "durable=#{resource[:durable]}", "auto_delete=#{resource[:auto_delete]}", "internal=#{resource[:internal]}", "arguments=#{self.clean_arguments.to_json}")
     @property_hash[:ensure] = :present
   end
 
