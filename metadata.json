@@ -1,6 +1,6 @@
 {
   "name": "prachetasp-rabbitmq",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": "prachetasp",
   "license": "Licensed under (Apache 2.0)",
   "summary": "RabbitMQ Puppet Module (for company internal usage)",
