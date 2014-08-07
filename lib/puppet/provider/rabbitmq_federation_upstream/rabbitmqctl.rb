@@ -44,7 +44,13 @@ Puppet::Type.type(:rabbitmq_federation_upstream).provide(:rabbitmqctl) do
 
   def create
     data = { 'uri' => resource[:uris], 'expires' => resource[:expires].to_i, 'message-ttl' => resource[:message_ttl].to_i, 'ack-mode' => resource[:ack_mode], 'trust-user-id' => to_bool(resource[:trust_user_id]), 'prefetch-count' => resource[:prefetch_count].to_i, 'max-hops' => resource[:max_hops].to_i, 'reconnect-delay' => resource[:reconnect_delay].to_i}
-    rabbitmqctl('set_parameter', 'federation-upstream', resource[:name], data.to_json, '-p', resource[:vhost])
+    # Rabbitmq throws an error when the below fields are 0 in a federation upstream
+    ['expires', 'message-ttl'].each do |field|
+      if data[field] == 0
+        data.delete(field)
+      end
+    end
+    rabbitmqctl('set_parameter', '-p', resource[:vhost], 'federation-upstream', resource[:name], data.to_json)
   end
 
   def destroy
